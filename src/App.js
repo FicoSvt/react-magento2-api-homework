@@ -23,9 +23,6 @@ class App extends Component {
                   <li className="ui-navigation__list-item">
                       <NavLink exact={true} to="/" className="ui-navigation__list-link" activeClassName="ui-navigation__list-link--active">Home</NavLink>
                   </li>
-                  <li className="ui-navigation__list-item">
-                      <NavLink to="/tracks" className="ui-navigation__list-link" activeClassName="ui-navigation__list-link--active">Tracks</NavLink>
-                  </li>
                 </ul>
               </div>
             </nav>            

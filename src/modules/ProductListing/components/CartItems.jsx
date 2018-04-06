@@ -5,7 +5,7 @@ const CartItems = (props) => {
         <li className="ui-list__item ui-list__cart__item">
             <span className="ui-list__inner-item ui-list__name list-item-name">{props.name}</span>
             <span className="ui-list__inner-item ui-list__qty list-item-qty">Qty: {props.qty}</span>
-            <span className="ui-list__inner-item ui-list__price list-item-price">Price: <span className="price">{props.currency}{props.price}</span></span>
+            <span className="ui-list__inner-item ui-list__price list-item-price">Price: <span className="price">{props.currency}{Number.parseFloat(props.price).toFixed(2)}</span></span>
             <span className="ui-list__inner-item ui-list__remove" onClick={props.removeItemFromCart}>
                 <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 28" className="ui-icon ui-icon__remove">
                     <title>times-circle-o</title>

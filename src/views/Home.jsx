@@ -1,10 +1,12 @@
 import React, { Component } from 'react';
 import ListItems from '../modules/ProductListing/components/ListItems';
 import CartItems from '../modules/ProductListing/components/CartItems';
+import Pagination from '../modules/ProductListing/components/Pagination';
 import FetchProductsList from '../actions/FetchProductsList';
 import FetchCartId from '../actions/FetchCartId';
 import FetchCartItem from '../actions/FetchCartItem';
 import FetchCartItemDelete from '../actions/FetchCartItemDelete';
+import Loader from '../components/Loader';
 
 import { stringify } from 'qs'
 
@@ -49,9 +51,12 @@ class Home extends Component {
     cartItems: [],
     cartId: '',
     currentPage: 1,
+    totalCount: 1,
+    pageSize: 10,
     basePrice: 0,
     baseCurrency: '$',
-    isLoading: false
+    isLoading: false,
+    isLoadingPage: false
   }
   componentWillMount() {
     
@@ -61,8 +66,12 @@ class Home extends Component {
     FetchCartId(END_POINT,CART_LIST,this.handleCartId);
   }
 
-  handleCatalogProducts = (data) => {
-    this.setState({listItems: data})
+  formatPrice = (sourcePrice) => {
+    return parseFloat(sourcePrice).toFixed(2);
+  }
+
+  handleCatalogProducts = (data,totalCount) => {
+    this.setState({listItems: data,totalCount: totalCount,isLoadingPage: false})
   }
 
   handleCartId = (data) => {
@@ -71,16 +80,15 @@ class Home extends Component {
 
   handleCartItem = (sku,response) => {
     let currentCartState = this.state.cartItems,
-    existingCartItemCheck = currentCartState.map(item => item.sku).indexOf(sku),
-    updatedCartState = null,
-    basePrice = this.state.basePrice,
-    updatedCartItem = null,
-    updatedPrice = null;
+        existingCartItemCheck = currentCartState.map(item => item.sku).indexOf(sku),
+        updatedCartState = null,
+        basePrice = this.state.basePrice,
+        updatedCartItem = null,
+        updatedPrice = null;
     if(existingCartItemCheck < 0) {
       updatedCartState = currentCartState.concat(response);
       updatedCartItem = updatedCartState.find(item => item.sku === sku);
-      updatedPrice = basePrice + updatedCartItem.price
-      console.log(updatedCartItem);
+      updatedPrice = basePrice + updatedCartItem.price;
     } else {
       updatedCartState = this.state.cartItems
       updatedCartState[existingCartItemCheck].qty ++;
@@ -92,21 +100,15 @@ class Home extends Component {
   deleteCartItem = (sku) => {
     const currentCartState = this.state.cartItems;
     let productInCart = currentCartState.map(item => item.item_id).indexOf(sku),
-    itemPrice = currentCartState[productInCart].price * currentCartState[productInCart].qty,
-    updatedPrice = null,
-    updatedCartState = null;
+        itemPrice = currentCartState[productInCart].price * currentCartState[productInCart].qty,
+        updatedPrice = null,
+        updatedCartState = null;
     if(productInCart > -1) {
         currentCartState.splice(productInCart, 1);
         updatedCartState = currentCartState;
         updatedPrice = this.state.basePrice - itemPrice;
     }
-    this.setState ((state, props) => {
-        return {
-            cartData: updatedCartState,
-            basePrice: updatedPrice,
-            isLoading: false
-        }
-    });
+    return this.setState({cartData: updatedCartState,basePrice: updatedPrice,isLoading: false});
   }
 
   addItemToCarthandler = (id,sku) => {
@@ -125,31 +127,80 @@ class Home extends Component {
     return imgPath + moreDeep.value;
   }
 
-  render() { 
+  paginationNextpageHandler = (pageNum,pageSize) => {
+    let query = {
+        searchCriteria: {
+            page_size: pageSize,
+            current_page: pageNum,
+            filter_groups: [
+                {
+                    filters: [
+                        {
+                            field: 'category_id',
+                            value: '3',
+                            condition_type: 'eq'
+                        },
+                        {
+                            field: 'type_id',
+                            value: 'simple',
+                            condition_type: 'eq'
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+    query = stringify(query);
+    this.setState({isLoadingPage: true});
+    FetchProductsList(END_POINT,"products?" + query,this.handleCatalogProducts);
+  }
+
+  render() {
+
+
+    let paginationCount = Math.ceil(this.state.totalCount / this.state.pageSize),
+        pagination = [...Array(paginationCount).keys()],
+        finalPagination = pagination.map(a => a+1);
+
+    
+    
     return (
         <div className="ui-main">
             <div className="ui-container">
-                <h1 className="ui-title ui-title--margin ui-title--border">Inchoo</h1>
+                <h1 className="ui-title ui-title--margin ui-title--border">Our Products</h1>
             </div>
             <div className="ui-container">
-                <ul className="ui-list ui-list__products">
-                    {this.state.listItems.map((item) => {
-                        return <ListItems 
-                        key={item.id} 
-                        name={item.name}
-                        sku={item.sku} 
-                        smallimage={this.transformItems(item.id)}
-                        currency={this.state.baseCurrency} 
-                        price={item.price} 
-                        dataid={item.id} 
-                        addItemToCart={(event) => this.addItemToCarthandler(item.id,item.sku)} />
+                <div className="ui-list__products-container">
+                    <div className="ui-pagination">
+                    {finalPagination.map((item,i) => {
+                        return <Pagination key={i} pageNumber={item} pageSwitch={() => this.paginationNextpageHandler(item,this.state.pageSize)}/>;
+                        
                     })}
-                </ul>
+                    </div>
+                    <div className="ui-list__container">
+                        {this.state.isLoadingPage ?
+                        <Loader />
+                        : null
+                        }
+                        <ul className="ui-list ui-list__products">
+                        
+                            {this.state.listItems.map((item) => {
+                                return <ListItems 
+                                key={item.id} 
+                                name={item.name}
+                                sku={item.sku} 
+                                smallimage={this.transformItems(item.id)}
+                                currency={this.state.baseCurrency} 
+                                price={item.price} 
+                                dataid={item.id} 
+                                addItemToCart={(event) => this.addItemToCarthandler(item.id,item.sku)} />
+                            })}
+                        </ul>
+                    </div>
+                </div>
                 <aside className="ui-box ui-sidebar">
                     {this.state.isLoading ?
-                    <div className="ui-loader__container">
-                        <div className="lds-ring"><div></div><div></div><div></div><div></div></div>
-                    </div>
+                    <Loader />
                     : null
                     }
                     {this.state.cartItems.length ?
@@ -158,7 +209,8 @@ class Home extends Component {
                         return <CartItems 
                         key={item.item_id} 
                         name={item.name} 
-                        price={item.price} 
+                        price={item.price}
+                        currency={this.state.baseCurrency} 
                         qty={item.qty}
                         removeItemFromCart={(event) => this.removeItemFromCartHandler(item.item_id)}/>
                         })} 
@@ -167,7 +219,7 @@ class Home extends Component {
                     }
 
                     {this.state.cartItems.length ?
-                        <p className="ui-grand-total">Subtotal: <span className="price">{this.state.baseCurrency}{this.state.basePrice}</span></p>
+                        <p className="ui-grand-total">Subtotal: <span className="price">{this.state.baseCurrency}{Number.parseFloat(this.state.basePrice).toFixed(2)}</span></p>
                         : null
                     }
                 </aside>

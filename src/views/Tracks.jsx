@@ -124,7 +124,7 @@ class Tracks extends Component {
         return this.setState({
             cartData: cartDataFinal,
                 basePrice: priceUpdater,
-                isLoading: false
+                isLoading: true
         })
     }
 
